@@ -37,36 +37,22 @@ app.post("/form", async (req, res) => {
     }
   });
   
-  app.post("/forms/:formId/fields", async (req, res) => {
+  app.post("/form/:formId/fields", async (req, res) => {
     try {
       const { formId } = req.params;
       const { fields } = req.body;
   
-      /**
-       * fields = [
-       *  { label, type, order, options? }
-       * ]
-       */
-  
-      const createdFields = await prisma.field.createMany({
-        data: fields.map(field => ({
-          label: field.label,
-          type: field.type,
-          order: field.order,
-          formId
-        }))
-      });
-  
-      // handle options separately
       for (const field of fields) {
-        if (field.options && field.options.length > 0) {
-          const createdField = await prisma.field.findFirst({
-            where: {
-              formId,
-              label: field.label
-            }
-          });
+        const createdField = await prisma.field.create({
+          data: {
+            label: field.label,
+            type: field.type,   // ENUM: TEXT, RADIO, CHECKBOX, SELECT
+            order: field.order,
+            formId
+          }
+        });
   
+        if (field.options && field.options.length > 0) {
           await prisma.option.createMany({
             data: field.options.map(opt => ({
               label: opt,
@@ -76,15 +62,26 @@ app.post("/form", async (req, res) => {
         }
       }
   
+      // ✅ Publish form
+      const form = await prisma.form.update({
+        where: { formId },
+        data: { status: "PUBLISHED" }
+      });
+  
       res.json({
-        message: "fields added successfully",
-        count: createdFields.count
+        message: "Fields added and form published successfully",
+        publicLink: `/form/${formId}`,
+        form
       });
   
     } catch (error) {
-      res.status(500).json({ message: "Failed to add fields" });
+      console.error(error);
+      res.status(500).json({
+        message: "Failed to create fields or publish form"
+      });
     }
   });
+  
   
 
 
@@ -102,9 +99,7 @@ app.put("/form/:formId/publish", async (req, res) => {
       });
   
       res.json({
-        message: "Form published",
-        publicLink: `/form/${formId}`,
-        form
+        
       });
   
     } catch (error) {
