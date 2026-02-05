@@ -1,17 +1,13 @@
 const express = require("express");
 const app = express();
+const cors = require("cors")
 const authRoutes = require('./src/auth')
 const cookieParser = require("cookie-parser");
 const prisma =  require("./src/prisma")
-app.use(cors({
-    origin: [
-      "http://localhost:5173",
-      "https://love-backend-1agq.onrender.com"
-    ], // frontend URL
-    credentials: true
-  }));
+app.use(express.json());
 app.use(cookieParser());
 app.use("/",authRoutes)
+app.use(cors())
 
 
 
@@ -19,7 +15,6 @@ app.use("/",authRoutes)
 app.post("/form", async (req, res) => {
     try {
       const { title, description } = req.body;
-      
    console.log(req.body)
       if (!title) {
         return res.status(400).json({ message: "Title is required" });
