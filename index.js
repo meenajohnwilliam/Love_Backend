@@ -9,6 +9,34 @@ app.use("/",authRoutes)
 
 
 
+
+app.post("/form", async (req, res) => {
+    try {
+      const { title, description } = req.body;
+  
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+      }
+  
+      const form = await prisma.form.create({
+        data: {
+          title,
+          description,
+          status: "DRAFT"
+        }
+      });
+  
+      res.status(201).json({
+        message: "Form created successfully",
+        form
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create form" });
+    }
+  });
+  
+
+
 /**
  * 2️⃣ Add Field (with options if needed)
  */
