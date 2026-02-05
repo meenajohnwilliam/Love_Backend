@@ -1,16 +1,17 @@
 const nodemailer = require("nodemailer");
+const config = require('./config')
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: config.EMAIL_USER,
+    pass: config.EMAIL_PASS
   }
 });
 
 async function sendOtpEmail(toEmail, otpCode) {
   await transporter.sendMail({
-    from: `"Auth System" <${process.env.EMAIL_USER}>`,
+    from: `"Auth System" <${config.EMAIL_USER}>`,
     to: toEmail,
     subject: "Your OTP Code",
     html: `

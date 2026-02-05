@@ -51,7 +51,10 @@ app.post("/form", async (req, res) => {
               label: field.label,
               type: field.type,
               order: field.order,
-              formId
+              formId,
+              correctAnswer: field.correctAnswer
+                ? JSON.stringify(field.correctAnswer)
+                : null
             }
           });
   
@@ -85,10 +88,6 @@ app.post("/form", async (req, res) => {
     }
   });
   
-  
-
-
-  
 /**
  * Publish Form
  */
@@ -114,10 +113,7 @@ app.put("/form/:formId/publish", async (req, res) => {
     }
   });
 
-
-  /**
- * Get Public Form
- */
+  
   app.get("/form/:formId", async (req, res) => {
     try {
       const { formId } = req.params;
@@ -157,9 +153,7 @@ app.put("/form/:formId/publish", async (req, res) => {
     }
   });
   
-  
 
-  
   app.post("/form/:formId/submit", async (req, res) => {
     try {
       const { formId } = req.params;
@@ -218,9 +212,6 @@ app.put("/form/:formId/publish", async (req, res) => {
   });
   
 
-/**
- * 6️⃣ Get Response Count & Avg Score
- */
 app.get("/form/:formId/stats", async (req, res) => {
   const { formId } = req.params;
 

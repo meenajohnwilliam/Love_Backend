@@ -3,9 +3,10 @@ const router = express.Router();
 const jwt = require("jsonwebtoken");
 const prisma = require("./prisma");
 const { sendOtpEmail } = require("./mailer");
+const config = require('./config')
 
-const ACCESS_SECRET = process.env.ACCESS_SECRET;
-const REFRESH_SECRET = process.env.REFRESH_SECRET;
+const ACCESS_SECRET = config.ACCESS_SECRET;
+const REFRESH_SECRET = config.REFRESH_SECRET;
 
 // ================= UTILS =================
 const generateOTP = () =>

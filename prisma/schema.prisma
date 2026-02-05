@@ -75,10 +75,11 @@ model Field {
   fieldId   String    @id @default(cuid())
   label     String
   type      FieldType
-  order Int
+  order     Int
 
   formId    String
   form      Form      @relation(fields: [formId], references: [formId])
+  correctAnswer  String?
 
   options   Option[]     // ✅ OPTIONS ONLY FOR CHOICE FIELDS
   values    Value[]      // ✅ required reverse relation
