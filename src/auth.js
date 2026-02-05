@@ -105,6 +105,32 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 });
 
+// ================= AUTO LOGIN =================
+router.get("/auth/me", async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) return res.status(401).json({ message: "Not logged in" });
+
+    const decoded = jwt.verify(token, REFRESH_SECRET);
+
+    const user = await prisma.user.findFirst({
+      where: {
+        userId: decoded.userId,
+        refreshToken: token
+      },
+      select: { userId: true, email: true, name: true, role: true }
+    });
+
+    if (!user) return res.status(401).json({ message: "Session expired" });
+
+    const accessToken = generateAccessToken(user);
+    res.json({ user, accessToken });
+  } catch {
+    res.status(401).json({ message: "Invalid session" });
+  }
+});
+
+
 // ================= REQUEST OTP LOGIN =================
 router.post("/auth/request-otp", async (req, res) => {
   try {
@@ -171,30 +197,7 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
-// ================= AUTO LOGIN =================
-router.get("/auth/me", async (req, res) => {
-  try {
-    const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ message: "Not logged in" });
 
-    const decoded = jwt.verify(token, REFRESH_SECRET);
-
-    const user = await prisma.user.findFirst({
-      where: {
-        userId: decoded.userId,
-        refreshToken: token
-      },
-      select: { userId: true, email: true, name: true, role: true }
-    });
-
-    if (!user) return res.status(401).json({ message: "Session expired" });
-
-    const accessToken = generateAccessToken(user);
-    res.json({ user, accessToken });
-  } catch {
-    res.status(401).json({ message: "Invalid session" });
-  }
-});
 
 // ================= LOGOUT =================
 router.post("/auth/logout", async (req, res) => {
