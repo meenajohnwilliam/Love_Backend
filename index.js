@@ -90,6 +90,43 @@ app.post("/form", async (req, res) => {
       });
     }
   });
+
+  app.put("/form/:formId/reveal", async (req, res) => {
+    try {
+      const { formId } = req.params;
+      const { revealText, revealImage } = req.body;
+  
+      // ❌ Validation: at least one is required
+      if (!revealText && !revealImage) {
+        return res.status(400).json({
+          message: "Either revealText or revealImage is required"
+        });
+      }
+  
+      const form = await prisma.form.update({
+        where: { formId },
+        data: {
+          revealText: revealText || null,
+          revealImage: revealImage || null
+        }
+      });
+  
+      res.json({
+        message: "Reveal content updated successfully",
+        reveal: {
+          text: form.revealText,
+          image: form.revealImage
+        }
+      });
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Failed to update reveal content"
+      });
+    }
+  });
+  
   
 /**
  * Publish Form

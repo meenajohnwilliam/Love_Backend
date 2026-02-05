@@ -19,8 +19,6 @@ enum FormStatus {
 
 enum FieldType {
   TEXT
-  RADIO         // Single choice
-  CHECKBOX      // Multiple choice
   SELECT        // Dropdown
 }
 
@@ -60,13 +58,15 @@ model Form {
   yourSpouseName    String
   status         FormStatus @default(DRAFT)
 
+  revealText    String?   // ✅ message after submit
+  revealImage   String?  
+
   responseCount  Int        @default(0) // ✅ total submissions
 
   fields         Field[]
   responses      Response[]
 
   createdAt      DateTime   @default(now())
-
 
 }
 
