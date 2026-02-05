@@ -12,7 +12,7 @@ app.use("/",authRoutes)
 
 app.post("/form", async (req, res) => {
     try {
-      const { title, description ,userId} = req.body;
+      const { title, description } = req.body;
    console.log(req.body)
       if (!title) {
         return res.status(400).json({ message: "Title is required" });
@@ -23,7 +23,7 @@ app.post("/form", async (req, res) => {
           title,
           description,
           status: "DRAFT",
-          userId: userId
+         
         }
       });
   
@@ -37,44 +37,57 @@ app.post("/form", async (req, res) => {
     }
   });
   
-
-
-/**
- * 2️⃣ Add Field (with options if needed)
- */
-app.post("/forms/:formId/fields", async (req, res) => {
+  app.post("/forms/:formId/fields", async (req, res) => {
     try {
       const { formId } = req.params;
-      const { label, type, order, options } = req.body;
+      const { fields } = req.body;
   
-      const field = await prisma.field.create({
-        data: {
-          label,
-          type,
-          order,
-          formId,
+      /**
+       * fields = [
+       *  { label, type, order, options? }
+       * ]
+       */
   
-          // create options only if provided
-          options: options
-            ? {
-                create: options.map((opt) => ({
-                  label: opt
-                }))
-              }
-            : undefined
-        },
-  
-        // 👇 THIS LINE RETURNS OPTIONS IN RESPONSE
-        include: {
-          options: true
-        }
+      const createdFields = await prisma.field.createMany({
+        data: fields.map(field => ({
+          label: field.label,
+          type: field.type,
+          order: field.order,
+          formId
+        }))
       });
   
-      res.json(field);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+      // handle options separately
+      for (const field of fields) {
+        if (field.options && field.options.length > 0) {
+          const createdField = await prisma.field.findFirst({
+            where: {
+              formId,
+              label: field.label
+            }
+          });
+  
+          await prisma.option.createMany({
+            data: field.options.map(opt => ({
+              label: opt,
+              fieldId: createdField.fieldId
+            }))
+          });
+        }
+      }
+  
+      res.json({
+        message: "fields added successfully",
+        count: createdFields.count
+      });
+  
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add fields" });
     }
   });
+  
+
+
   
 /**
  * Publish Form
