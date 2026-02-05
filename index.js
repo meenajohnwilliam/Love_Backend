@@ -19,6 +19,7 @@ app.use("/",authRoutes)
 app.post("/form", async (req, res) => {
     try {
       const { title, description } = req.body;
+      
    console.log(req.body)
       if (!title) {
         return res.status(400).json({ message: "Title is required" });
