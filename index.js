@@ -12,8 +12,8 @@ app.use("/",authRoutes)
 
 app.post("/form", async (req, res) => {
     try {
-      const { title, description } = req.body;
-  
+      const { title, description ,userId} = req.body;
+   console.log(req.body)
       if (!title) {
         return res.status(400).json({ message: "Title is required" });
       }
@@ -22,7 +22,8 @@ app.post("/form", async (req, res) => {
         data: {
           title,
           description,
-          status: "DRAFT"
+          status: "DRAFT",
+          userId: userId
         }
       });
   
@@ -31,6 +32,7 @@ app.post("/form", async (req, res) => {
         form
       });
     } catch (error) {
+        console.log(error)
       res.status(500).json({ message: "Failed to create form" });
     }
   });

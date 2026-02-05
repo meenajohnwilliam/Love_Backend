@@ -50,7 +50,7 @@ model User {
 
   createdAt    DateTime @default(now())
 
-  form    Form[]
+
 }
 
 
@@ -67,8 +67,7 @@ model Form {
 
   createdAt      DateTime   @default(now())
 
-  userId String
-  user User    @relation(fields: [userId], references: [userId])
+
 }
 
 
