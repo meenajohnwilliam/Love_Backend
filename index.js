@@ -7,8 +7,8 @@ const prisma =  require("./src/prisma")
 
 app.use(cors({
   origin: [
-    "http://localhost:5173/",
-    "https://love-backend-1agq.onrender.com/"
+    "http://localhost:5173",
+    "https://love-backend-1agq.onrender.com"
   ], // frontend URL
   credentials: true
 }));
