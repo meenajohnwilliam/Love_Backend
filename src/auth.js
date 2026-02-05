@@ -91,8 +91,8 @@ router.post("/auth/verify-otp", async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "strict",
-      secure: false,
+      secure: true, 
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -186,8 +186,8 @@ router.post("/auth/login", async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      sameSite: "strict",
-      secure: false,
+      secure: true, 
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
