@@ -29,7 +29,7 @@ const generateRefreshToken = (user) =>
 // ================= SIGNUP =================
 router.post("/auth/signup", async (req, res) => {
   try {
-    const { email, name, password } = req.body;
+    const { email} = req.body;
     if (!email) return res.status(400).json({ message: "Email required" });
 
     const exists = await prisma.user.findUnique({ where: { email } });
@@ -41,8 +41,6 @@ router.post("/auth/signup", async (req, res) => {
     await prisma.user.create({
       data: {
         email,
-        name,
-        password,
         otpCode,
         otpExpiresAt,
         role: "UNVERIFIED"
@@ -107,6 +105,36 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 });
 
+// ================= REQUEST OTP LOGIN =================
+router.post("/auth/request-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || user.role !== "USER") {
+      return res.status(400).json({ message: "Invalid user" });
+    }
+
+    const otpCode = generateOTP();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { userId: user.userId },
+      data: { otpCode, otpExpiresAt }
+    });
+
+    await sendOtpEmail(email, otpCode);
+
+    res.json({ message: "OTP sent for login" });
+  } catch {
+    res.status(500).json({ message: "OTP request failed" });
+  }
+});
+
+
+
+
+
 // ================= LOGIN (PASSWORD) =================
 router.post("/auth/login", async (req, res) => {
   try {
@@ -140,32 +168,6 @@ router.post("/auth/login", async (req, res) => {
     res.json({ message: "Login successful", accessToken });
   } catch {
     res.status(500).json({ message: "Login failed" });
-  }
-});
-
-// ================= REQUEST OTP LOGIN =================
-router.post("/auth/request-otp", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || user.role !== "USER") {
-      return res.status(400).json({ message: "Invalid user" });
-    }
-
-    const otpCode = generateOTP();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    await prisma.user.update({
-      where: { userId: user.userId },
-      data: { otpCode, otpExpiresAt }
-    });
-
-    await sendOtpEmail(email, otpCode);
-
-    res.json({ message: "OTP sent for login" });
-  } catch {
-    res.status(500).json({ message: "OTP request failed" });
   }
 });
 

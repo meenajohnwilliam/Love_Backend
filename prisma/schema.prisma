@@ -19,7 +19,7 @@ enum FormStatus {
 
 enum FieldType {
   TEXT
-  SELECT        // Dropdown
+  SELECT      
 }
 
 enum Role {
@@ -35,11 +35,9 @@ enum Role {
 
 model User {
   userId       String   @id @default(cuid())
-  email        String  @unique
-  phone        String
-  name         String
+  email        String   @unique
   role         Role     @default(UNVERIFIED) // starts as UNVERIFIED until OTP confirmed
-  password     String   
+
 
   otpCode      String?    
   otpExpiresAt DateTime?

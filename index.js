@@ -127,67 +127,6 @@ app.put("/form/:formId/reveal", async (req, res) => {
     }
   });
   
-app.put("/form/:formId/publish", async (req, res) => {
-    try {
-      const { formId } = req.params;
-  
-      const form = await prisma.form.update({
-        where: { formId },
-        data: { status: "PUBLISHED" }
-      });
-  
-      res.json({
-        
-      });
-  
-    } catch (error) {
-      console.error("Publish form error:", error);
-  
-      res.status(500).json({
-        message: "Failed to publish form"
-      });
-    }
-  });
-  
-app.get("/form/:formId", async (req, res) => {
-    try {
-      const { formId } = req.params;
-  
-      // 1️⃣ Get form by unique ID
-      const form = await prisma.form.findUnique({
-        where: { formId },
-        include: {
-          fields: {
-            include: { options: true }
-          }
-        }
-      });
-  
-      // 2️⃣ Check existence
-      if (!form) {
-        return res.status(404).json({
-          message: "Form not found"
-        });
-      }
-  
-      // 3️⃣ Check publish status
-      if (form.status !== "PUBLISHED") {
-        return res.status(403).json({
-          message: "Form not published yet"
-        });
-      }
-  
-      // 4️⃣ Send public form
-      res.json(form);
-  
-    } catch (error) {
-      console.error("Get form error:", error);
-      res.status(500).json({
-        message: "Server error"
-      });
-    }
-  });
-  
   app.post("/form/:formId/submit", async (req, res) => {
     try {
       const { formId } = req.params;
@@ -244,6 +183,9 @@ app.get("/form/:formId", async (req, res) => {
       });
     }
   });
+
+
+
   
 app.get("/form/:formId/stats", async (req, res) => {
   const { formId } = req.params;
