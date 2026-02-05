@@ -42,7 +42,7 @@ app.post("/form", async (req, res) => {
     }
   });
   
-  app.post("/form/:formId/fields", async (req, res) => {
+app.post("/form/:formId/fields", async (req, res) => {
     try {
       const { formId } = req.params;
       const { fields } = req.body;
@@ -91,7 +91,7 @@ app.post("/form", async (req, res) => {
     }
   });
 
-  app.put("/form/:formId/reveal", async (req, res) => {
+app.put("/form/:formId/reveal", async (req, res) => {
     try {
       const { formId } = req.params;
       const { revealText, revealImage } = req.body;
@@ -127,10 +127,6 @@ app.post("/form", async (req, res) => {
     }
   });
   
-  
-/**
- * Publish Form
- */
 app.put("/form/:formId/publish", async (req, res) => {
     try {
       const { formId } = req.params;
@@ -152,9 +148,8 @@ app.put("/form/:formId/publish", async (req, res) => {
       });
     }
   });
-
   
-  app.get("/form/:formId", async (req, res) => {
+app.get("/form/:formId", async (req, res) => {
     try {
       const { formId } = req.params;
   
@@ -193,7 +188,6 @@ app.put("/form/:formId/publish", async (req, res) => {
     }
   });
   
-
   app.post("/form/:formId/submit", async (req, res) => {
     try {
       const { formId } = req.params;
@@ -251,7 +245,6 @@ app.put("/form/:formId/publish", async (req, res) => {
     }
   });
   
-
 app.get("/form/:formId/stats", async (req, res) => {
   const { formId } = req.params;
 
@@ -269,8 +262,7 @@ app.get("/form/:formId/stats", async (req, res) => {
     averageScore:
       responses.length === 0 ? 0 : totalScore / responses.length
   });
-});
-
+  });
 
 app.get("/form/:formId/responses", async (req, res) => {
     try {
