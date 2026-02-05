@@ -56,8 +56,8 @@ model User {
 
 model Form {
   formId         String     @id @default(cuid())
-  title          String
-  description    String?
+  yourName    String
+  yourSpouseName    String
   status         FormStatus @default(DRAFT)
 
   responseCount  Int        @default(0) // ✅ total submissions

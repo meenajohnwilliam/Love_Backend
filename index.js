@@ -14,16 +14,19 @@ app.use(cors())
 
 app.post("/form", async (req, res) => {
     try {
-      const { title, description } = req.body;
-   console.log(req.body)
-      if (!title) {
-        return res.status(400).json({ message: "Title is required" });
+      const { yourName, yourSpouseName} = req.body;
+  
+      if (!yourName) {
+        return res.status(400).json({ message: "Your Name is required" });
+      }
+      if (!yourSpouseName) {
+        return res.status(400).json({ message: "Your Spouse Name is required" });
       }
   
       const form = await prisma.form.create({
         data: {
-          title,
-          description,
+          yourName,
+          yourSpouseName,
           status: "DRAFT",
          
         }
