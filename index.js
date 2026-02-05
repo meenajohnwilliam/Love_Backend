@@ -42,27 +42,28 @@ app.post("/form", async (req, res) => {
       const { formId } = req.params;
       const { fields } = req.body;
   
-      for (const field of fields) {
-        const createdField = await prisma.field.create({
-          data: {
-            label: field.label,
-            type: field.type,   // ENUM: TEXT, RADIO, CHECKBOX, SELECT
-            order: field.order,
-            formId
-          }
-        });
-  
-        if (field.options && field.options.length > 0) {
-          await prisma.option.createMany({
-            data: field.options.map(opt => ({
-              label: opt,
-              fieldId: createdField.fieldId
-            }))
+      await Promise.all(
+        fields.map(async (field) => {
+          const createdField = await prisma.field.create({
+            data: {
+              label: field.label,
+              type: field.type,
+              order: field.order,
+              formId
+            }
           });
-        }
-      }
   
-      // ✅ Publish form
+          if (field.options && field.options.length > 0) {
+            await prisma.option.createMany({
+              data: field.options.map(opt => ({
+                label: opt,
+                fieldId: createdField.fieldId
+              }))
+            });
+          }
+        })
+      );
+  
       const form = await prisma.form.update({
         where: { formId },
         data: { status: "PUBLISHED" }
