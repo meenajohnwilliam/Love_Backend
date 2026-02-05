@@ -3,7 +3,13 @@ const app = express();
 const authRoutes = require('./src/auth')
 const cookieParser = require("cookie-parser");
 const prisma =  require("./src/prisma")
-app.use(express.json());
+app.use(cors({
+    origin: [
+      "http://localhost:5173",
+      "https://love-backend-1agq.onrender.com"
+    ], // frontend URL
+    credentials: true
+  }));
 app.use(cookieParser());
 app.use("/",authRoutes)
 
