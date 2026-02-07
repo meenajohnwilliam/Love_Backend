@@ -4,9 +4,12 @@ const jwt = require("jsonwebtoken");
 const prisma = require("./prisma");
 const { sendOtpEmail } = require("./mailer");
 const config = require('./config')
+const roleBasedAccess = require('./authorizeRoles')
 
 const ACCESS_SECRET = config.ACCESS_SECRET;
 const REFRESH_SECRET = config.REFRESH_SECRET;
+
+
 
 // ================= UTILS =================
 const generateOTP = () =>
@@ -25,6 +28,37 @@ const generateRefreshToken = (user) =>
     REFRESH_SECRET,
     { expiresIn: "7d" }
   );
+
+
+  
+// ================= REFRESH =================
+  router.post("/auth/refresh", async (req, res) => {
+    try {
+      const token = req.cookies.refreshToken;
+      if (!token) {
+        return res.status(401).json({ message: "No refresh token" });
+      }
+  
+      const decoded = jwt.verify(token, REFRESH_SECRET);
+  
+      const user = await prisma.user.findUnique({
+        where: { userId: decoded.userId }
+      });
+  
+      if (!user || user.refreshToken !== token) {
+        return res.status(403).json({ message: "Invalid refresh token" });
+      }
+  
+      const accessToken = generateAccessToken({
+        userId: user.userId,
+        role: user.role
+      });
+  
+      res.json({ accessToken });
+    } catch {
+      res.status(403).json({ message: "Token expired" });
+    }
+  });
 
 // ================= SIGNUP =================
 router.post("/auth/signup", async (req, res) => {
@@ -56,6 +90,35 @@ router.post("/auth/signup", async (req, res) => {
   }
 });
 
+// ================= RESEND-OTP =================
+router.post("/auth/resend-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || user.role !== "UNVERIFIED") {
+      return res.status(400).json({
+        message: "Invalid request"
+      });
+    }
+
+    const otpCode = generateOTP();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { userId: user.userId },
+      data: { otpCode, otpExpiresAt }
+    });
+
+    await sendOtpEmail(email, otpCode);
+
+    res.json({ message: "Signup OTP resent" });
+  } catch {
+    res.status(500).json({ message: "Resend failed" });
+  }
+});
+
 // ================= VERIFY OTP =================
 router.post("/auth/verify-otp", async (req, res) => {
   try {
@@ -73,10 +136,12 @@ router.post("/auth/verify-otp", async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
+    const finalRole = user.role === "ADMIN" ? "ADMIN" : "USER";
+
     const refreshToken = generateRefreshToken(user);
     const accessToken = generateAccessToken({
-      ...user,
-      role: "USER"
+      userId: user.userId,
+      role: finalRole
     });
 
     await prisma.user.update({
@@ -84,7 +149,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       data: {
         otpCode: null,
         otpExpiresAt: null,
-        role: "USER",
+        role: finalRole,
         refreshToken
       }
     });
@@ -92,12 +157,14 @@ router.post("/auth/verify-otp", async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: false, 
-      sameSite: "none",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     res.json({
       message: "OTP verified & logged in",
+      role: finalRole,
+      userId: user.userId ,
       accessToken
     });
   } catch (err) {
@@ -105,40 +172,24 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 });
 
-// ================= AUTO LOGIN =================
-router.get("/auth/me", async (req, res) => {
-  try {
-    const token = req.cookies.refreshToken;
-    if (!token) return res.status(401).json({ message: "Not logged in" });
-
-    const decoded = jwt.verify(token, REFRESH_SECRET);
-
-    const user = await prisma.user.findFirst({
-      where: {
-        userId: decoded.userId,
-        refreshToken: token
-      },
-      select: { userId: true, email: true, name: true, role: true }
-    });
-
-    if (!user) return res.status(401).json({ message: "Session expired" });
-
-    const accessToken = generateAccessToken(user);
-    res.json({ user, accessToken });
-  } catch {
-    res.status(401).json({ message: "Invalid session" });
-  }
-});
-
-
-// ================= REQUEST OTP LOGIN =================
-router.post("/auth/request-otp", async (req, res) => {
+// ================= LOGIN =================
+router.post("/auth/login", async (req, res) => {
   try {
     const { email } = req.body;
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || user.role !== "USER") {
-      return res.status(400).json({ message: "Invalid user" });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found. Please signup."
+      });
+    }
+
+    if (user.role === "UNVERIFIED") {
+      return res.status(400).json({
+        message: "User not verified",
+      
+      });
     }
 
     const otpCode = generateOTP();
@@ -151,47 +202,7 @@ router.post("/auth/request-otp", async (req, res) => {
 
     await sendOtpEmail(email, otpCode);
 
-    res.json({ message: "OTP sent for login" });
-  } catch {
-    res.status(500).json({ message: "OTP request failed" });
-  }
-});
-
-
-
-
-
-// ================= LOGIN (PASSWORD) =================
-router.post("/auth/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user || user.password !== password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    if (user.role !== "USER") {
-      return res.status(403).json({ message: "Verify OTP first" });
-    }
-
-    const refreshToken = generateRefreshToken(user);
-    const accessToken = generateAccessToken(user);
-
-    await prisma.user.update({
-      where: { userId: user.userId },
-      data: { refreshToken }
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false, 
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
-    res.json({ message: "Login successful", accessToken });
+    res.json({ message: "Login OTP sent" });
   } catch {
     res.status(500).json({ message: "Login failed" });
   }
@@ -217,5 +228,11 @@ router.post("/auth/logout", async (req, res) => {
     res.status(500).json({ message: "Logout failed" });
   }
 });
+
+router.get('/dashboard',roleBasedAccess(["ADMIN","USER"]),async (req,res)=>{
+ res.json({
+  message:"mass macha neega "
+ })
+})
 
 module.exports = router;

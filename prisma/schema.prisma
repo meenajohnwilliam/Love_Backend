@@ -46,6 +46,8 @@ model User {
 
   createdAt    DateTime @default(now())
 
+   forms        Form[] 
+
 
 }
 
@@ -65,6 +67,9 @@ model Form {
   responses      Response[]
 
   createdAt      DateTime   @default(now())
+
+  userId        String     // Foreign key to User
+  user          User       @relation(fields: [userId], references: [userId])
 
 }
 
