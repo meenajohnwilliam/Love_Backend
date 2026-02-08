@@ -79,7 +79,7 @@ model Field {
   label     String
   type      FieldType
   order     Int
-
+  imageUrl       String?  
   formId    String
   form      Form      @relation(fields: [formId], references: [formId])
   correctAnswer  String?

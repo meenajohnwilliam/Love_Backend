@@ -24,6 +24,16 @@ const LoveApp = multer({
     },
   }),
 });
+const LoveAppQuesPic = multer({
+  storage: multerS3({
+    s3: s3Client,
+    bucket: config.S3_BUCKET_NAME,
+    acl: 'public-read',
+    key: (req, file, cb) => {
+      cb(null, `LoveAppQuesPic/${Date.now()}_${file.originalname}`);
+    },
+  }),
+});
 
 
-module.exports = {LoveApp};
+module.exports = {LoveApp,LoveAppQuesPic};

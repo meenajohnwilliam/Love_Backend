@@ -4,7 +4,7 @@ const authRoutes = require('./src/auth')
 const cookieParser = require("cookie-parser");
 const natural = require("natural");
 const prisma =  require("./src/prisma")
-const {LoveApp} = require('./src/multer')
+const {LoveApp,LoveAppQuesPic} = require('./src/multer')
 
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
@@ -66,18 +66,25 @@ app.post("/form", async (req, res) => {
     }
   });
   
-app.post("/form/:formId/fields", async (req, res) => {
+app.post("/form/:formId/fields",LoveAppQuesPic.any(), async (req, res) => {
     try {
       const { formId } = req.params;
-      const { fields } = req.body;
+      const fields = JSON.parse(req.body.fields);  
+
+      const files = req.files || [];
   
       await Promise.all(
         fields.map(async (field) => {
+          let imageUrl = null;
+          if (files[index]) {
+            imageUrl = files[index].location || files[index].path;
+          }
           const createdField = await prisma.field.create({
             data: {
               label: field.label,
               type: field.type,
               order: field.order,
+              imageUrl,
               formId,
               correctAnswer: field.correctAnswer
                 ? JSON.stringify(field.correctAnswer)
@@ -115,9 +122,7 @@ app.post("/form/:formId/fields", async (req, res) => {
     }
   });
 
-  app.put(
-    "/form/:formId/reveal",LoveApp.single("revealImage"), // 👈 field name must match frontend
-    async (req, res) => {
+  app.put("/form/:formId/reveal",LoveApp.single("revealImage"),async (req, res) => {
       try {
         const { formId } = req.params;
         const { revealText } = req.body;
