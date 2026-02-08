@@ -352,7 +352,7 @@ app.get("/form/:formId/responses", async (req, res) => {
           userAnswer: v.value,
           similarity: Number(similarity.toFixed(2)),
           isCorrect,
-          symbol: isCorrect ? "✔️" : "❌"
+          symbol: isCorrect ? "true" : "false"
         };
       })
     }));
@@ -373,32 +373,32 @@ app.get("/form/:formId/responses", async (req, res) => {
 
 
 
-app.get("/response/:responseId", async (req, res) => {
-  try {
-    const response = await prisma.response.findUnique({
-      where: { responseId: req.params.responseId },
-      include: {
-        values: { include: { field: true } },
-        form: true
-      }
-    });
+// app.get("/response/:responseId", async (req, res) => {
+//   try {
+//     const response = await prisma.response.findUnique({
+//       where: { responseId: req.params.responseId },
+//       include: {
+//         values: { include: { field: true } },
+//         form: true
+//       }
+//     });
 
-    if (!response) return res.status(404).json({ message: "Response not found" });
+//     if (!response) return res.status(404).json({ message: "Response not found" });
 
-    res.json({
-      formTitle: response.form.title,
-      score: response.submissionScore,
-      submittedAt: response.createdAt,
-      answers: response.values.map(v => ({
-        question: v.field.label,
-        answer: v.value
-      }))
-    });
+//     res.json({
+//       formTitle: response.form.title,
+//       score: response.submissionScore,
+//       submittedAt: response.createdAt,
+//       answers: response.values.map(v => ({
+//         question: v.field.label,
+//         answer: v.value
+//       }))
+//     });
 
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch response" });
-  }
-});
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to fetch response" });
+//   }
+// });
 
   
 
