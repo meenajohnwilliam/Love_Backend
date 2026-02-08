@@ -144,203 +144,116 @@ app.put("/form/:formId/reveal", async (req, res) => {
       });
     }
   });
-  
-  app.post("/form/:formId/submit", async (req, res) => {
+
+  app.get("/form/:formId", async (req, res) => {
     try {
       const { formId } = req.params;
-      const { answers } = req.body;
-      // answers = [{ fieldId, value }]
   
-      // 1️⃣ Check form exists & published
       const form = await prisma.form.findUnique({
         where: { formId },
+        select: {
+          formId: true,
+          yourName: true,
+          yourSpouseName: true,
+          revealText: true,
+          revealImage: true,
+          fields: {
+            orderBy: { order: "asc" },
+            select: {
+              fieldId: true,
+              label: true,
+              type: true,
+              order: true,
+              options: {
+                select: {
+                  optionId: true,
+                  label: true
+                }
+              }
+            }
+          }
+        }
+        
       });
   
       if (!form) {
         return res.status(404).json({ message: "Form not found" });
       }
   
-      if (form.status !== "PUBLISHED") {
-        return res.status(403).json({ message: "Form not published" });
-      }
-  
-      // 2️⃣ Create response
-      const response = await prisma.response.create({
-        data: {
-          formId,
-        },
-      });
-  
-      // 3️⃣ Save values
-      const valuesData = answers.map((ans) => ({
-        responseId: response.responseId,
-        fieldId: ans.fieldId,
-        value: ans.value,
-      }));
-  
-      await prisma.value.createMany({
-        data: valuesData,
-      });
-  
-      // 4️⃣ Increment response count
-      await prisma.form.update({
-        where: { formId },
-        data: {
-          responseCount: { increment: 1 },
-        },
-      });
-  
-      res.json({
-        message: "Form submitted successfully",
-        responseId: response.responseId,
-      });
+      res.json(form);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: "Something went wrong",
-      });
+      console.error("Get form error:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
-
-
-  // app.get("/user/:userId/forms", async (req, res) => {
-  //   try {
-  //     const { userId } = req.params;
-  
-  //     const forms = await prisma.form.findMany({
-  //       where: { userId },
-  //       select: {
-  //         formId: true,
-  //         yourName: true,
-  //         yourSpouseName: true,
-  //         status: true,
-  //         responseCount: true,
-  //         createdAt: true
-  //       },
-  //       orderBy: { createdAt: "desc" }
-  //     });
-  
-  //     res.json({ forms });
-  //   } catch (error) {
-  //     console.error(error);
-  //     res.status(500).json({ message: "Failed to fetch user forms" });
-  //   }
-  // });
-
-
-  // app.get("/form/:formId/responses", async (req, res) => {
-  //   try {
-  //     const { formId } = req.params;
-  
-  //     const form = await prisma.form.findUnique({
-  //       where: { formId },
-  //       include: {
-  //         responses: {
-  //           orderBy: { createdAt: "asc" },
-  //           include: {
-  //             values: {
-  //               include: { field: true }
-  //             }
-  //           }
-  //         }
-  //       }
-  //     });
-  
-  //     if (!form) {
-  //       return res.status(404).json({ message: "Form not found" });
-  //     }
-  
-  //     const responses = form.responses.map((r, index) => ({
-  //       attempt: index + 1,
-  //       responseId: r.responseId,
-  //       score: r.score,
-  //       submittedAt: r.createdAt,
-  //       answers: r.values.map(v => ({
-  //         fieldLabel: v.field.label,
-  //         value: v.value
-  //       }))
-  //     }));
-  
-  //     res.json({
-  //       formId: form.formId,
-  //       totalResponses: form.responseCount,
-  //       responses
-  //     });
-  //   } catch (err) {
-  //     console.error(err);
-  //     res.status(500).json({ message: "Failed to fetch responses" });
-  //   }
-  // });
   
   
 
 
+  // ================== SUBMIT FORM (SCORING) ==================
+app.post("/form/:formId/submit", async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const { answers } = req.body;
 
+    const form = await prisma.form.findUnique({
+      where: { formId },
+      include: { fields: true }
+    });
 
-//   // ================== SUBMIT FORM (SCORING) ==================
-// app.post("/form/:formId/submit", async (req, res) => {
-//   try {
-//     const { formId } = req.params;
-//     const { answers } = req.body;
+    if (!form || form.status !== "PUBLISHED") {
+      return res.status(403).json({ message: "Form not available" });
+    }
 
-//     const form = await prisma.form.findUnique({
-//       where: { formId },
-//       include: { fields: true }
-//     });
+    let totalSimilarity = 0;
+    let totalQuestions = 0;
 
-//     if (!form || form.status !== "PUBLISHED") {
-//       return res.status(403).json({ message: "Form not available" });
-//     }
+    const valuesData = [];
 
-//     let totalSimilarity = 0;
-//     let totalQuestions = 0;
+    for (const ans of answers) {
+      const field = form.fields.find(f => f.fieldId === ans.fieldId);
+      if (!field || !field.correctAnswer) continue;
 
-//     const valuesData = [];
+      const correct = normalize(JSON.parse(field.correctAnswer));
+      const user = normalize(ans.value);
 
-//     for (const ans of answers) {
-//       const field = form.fields.find(f => f.fieldId === ans.fieldId);
-//       if (!field || !field.correctAnswer) continue;
+      const similarity = natural.JaroWinklerDistance(user, correct);
 
-//       const correct = normalize(JSON.parse(field.correctAnswer));
-//       const user = normalize(ans.value);
+      totalSimilarity += similarity;
+      totalQuestions++;
 
-//       const similarity = natural.JaroWinklerDistance(user, correct);
+      valuesData.push({
+        fieldId: ans.fieldId,
+        value: ans.value
+      });
+    }
 
-//       totalSimilarity += similarity;
-//       totalQuestions++;
+    const score =
+      totalQuestions === 0
+        ? 0
+        : Math.round((totalSimilarity / totalQuestions) * 100);
 
-//       valuesData.push({
-//         fieldId: ans.fieldId,
-//         value: ans.value
-//       });
-//     }
+    const response = await prisma.response.create({
+      data: {
+        formId,
+        submissionScore: score,
+        values: { create: valuesData }
+      }
+    });
 
-//     const score =
-//       totalQuestions === 0
-//         ? 0
-//         : Math.round((totalSimilarity / totalQuestions) * 100);
+    await prisma.form.update({
+      where: { formId },
+      data: { responseCount: { increment: 1 } }
+    });
 
-//     const response = await prisma.response.create({
-//       data: {
-//         formId,
-//         submissionScore: score,
-//         values: { create: valuesData }
-//       }
-//     });
-
-//     await prisma.form.update({
-//       where: { formId },
-//       data: { responseCount: { increment: 1 } }
-//     });
-
-//     res.json({
-//       responseId: response.responseId,
-//       score
-//     });
-//   } catch (err) {
-//     res.status(500).json({ message: "Submission failed" });
-//   }
-// });
+    res.json({
+      responseId: response.responseId,
+      score
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Submission failed" });
+  }
+});
 
 // // ================== USER FORMS ==================
 app.get("/user/:userId/forms", async (req, res) => {
