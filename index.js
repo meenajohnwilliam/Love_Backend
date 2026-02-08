@@ -4,16 +4,22 @@ const authRoutes = require('./src/auth')
 const cookieParser = require("cookie-parser");
 const natural = require("natural");
 const prisma =  require("./src/prisma")
-
+const {LoveApp} = require('./src/multer')
 
 const app = express();
+const isProd = process.env.NODE_ENV === "production";
+
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
+  origin: isProd
+  ? ["https://pookiecouple.com",
     "https://love-backend-1agq.onrender.com"
-  ], // frontend URL
+  ] // PRODUCTION
+  : [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://love-backend-1agq.onrender.com"
+    ], // DEVELOPMENT
   credentials: true
 }));
 app.use(express.json());
@@ -109,41 +115,46 @@ app.post("/form/:formId/fields", async (req, res) => {
     }
   });
 
-app.put("/form/:formId/reveal", async (req, res) => {
-    try {
-      const { formId } = req.params;
-      const { revealText, revealImage } = req.body;
+  app.put(
+    "/form/:formId/reveal",LoveApp.single("revealImage"), // 👈 field name must match frontend
+    async (req, res) => {
+      try {
+        const { formId } = req.params;
+        const { revealText } = req.body;
   
-      // ❌ Validation: at least one is required
-      if (!revealText && !revealImage) {
-        return res.status(400).json({
-          message: "Either revealText or revealImage is required"
+        // multer gives uploaded file here
+        const revealImage = req.file ? req.file.location : null;
+  
+        // ❌ Validation
+        if (!revealText && !revealImage) {
+          return res.status(400).json({
+            message: "Either revealText or revealImage is required",
+          });
+        }
+  
+        const form = await prisma.form.update({
+          where: { formId },
+          data: {
+            revealText: revealText || null,
+            revealImage: revealImage || null,
+          },
+        });
+  
+        res.json({
+          message: "Reveal content updated successfully",
+          reveal: {
+            text: form.revealText,
+            image: form.revealImage,
+          },
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          message: "Failed to update reveal content",
         });
       }
-  
-      const form = await prisma.form.update({
-        where: { formId },
-        data: {
-          revealText: revealText || null,
-          revealImage: revealImage || null
-        }
-      });
-  
-      res.json({
-        message: "Reveal content updated successfully",
-        reveal: {
-          text: form.revealText,
-          image: form.revealImage
-        }
-      });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({
-        message: "Failed to update reveal content"
-      });
     }
-  });
+  );
 
   app.get("/form/:formId", async (req, res) => {
     try {

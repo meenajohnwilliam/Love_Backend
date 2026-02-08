@@ -10,6 +10,7 @@ const ACCESS_SECRET = config.ACCESS_SECRET;
 const REFRESH_SECRET = config.REFRESH_SECRET;
 
 
+const isProd = process.env.NODE_ENV === "production";
 
 // ================= UTILS =================
 const generateOTP = () =>
@@ -156,8 +157,8 @@ router.post("/auth/verify-otp", async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, 
-      sameSite: "lax",
+      secure: isProd,                 // false in dev, true in prod
+      sameSite: isProd ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
