@@ -193,29 +193,15 @@ app.put("/form/:formId/reveal", async (req, res) => {
   // ================== SUBMIT FORM (SCORING) ==================
   app.post("/form/:formId/submit", async (req, res) => {
     try {
-      console.log("🔹 API HIT: /form/:formId/submit");
-  
       const { formId } = req.params;
       const { answers } = req.body;
   
-      console.log("1️⃣ Form ID:", formId);
-      console.log("2️⃣ Answers received:", JSON.stringify(answers, null, 2));
-  
-      // ================= FETCH FORM =================
       const form = await prisma.form.findUnique({
         where: { formId },
         include: { fields: true }
       });
   
-      console.log("3️⃣ Form fetched from DB:", JSON.stringify(form, null, 2));
-  
-      if (!form) {
-        console.log("❌ Form not found");
-        return res.status(404).json({ message: "Form not found" });
-      }
-  
-      if (form.status !== "PUBLISHED") {
-        console.log("❌ Form status is not PUBLISHED:", form.status);
+      if (!form || form.status !== "PUBLISHED") {
         return res.status(403).json({ message: "Form not available" });
       }
   
@@ -223,94 +209,56 @@ app.put("/form/:formId/reveal", async (req, res) => {
       let totalQuestions = 0;
       const valuesData = [];
   
-      console.log("4️⃣ Starting answer evaluation loop...");
-  
-      // ================= PROCESS ANSWERS =================
       for (const ans of answers) {
-        console.log("➡ Processing answer:", ans);
-  
         const field = form.fields.find(f => f.fieldId === ans.fieldId);
+        if (!field) continue;
   
-        console.log("5️⃣ Matched field:", field);
-  
-        if (!field) {
-          console.log("⚠ Field not found for fieldId:", ans.fieldId);
-          continue;
-        }
-  
-        if (!field.correctAnswer) {
-          console.log("⚠ No correctAnswer set for field:", field.fieldId);
-          continue;
-        }
-  
-        console.log("6️⃣ Raw correctAnswer:", field.correctAnswer);
-        console.log("7️⃣ User answer:", ans.value);
-  
-        const correct = normalize(JSON.parse(field.correctAnswer));
-        const user = normalize(ans.value);
-  
-        console.log("8️⃣ Normalized correct answer:", correct);
-        console.log("9️⃣ Normalized user answer:", user);
-  
-        const similarity = natural.JaroWinklerDistance(user, correct);
-  
-        console.log("🔟 Similarity score:", similarity);
-  
-        totalSimilarity += similarity;
-        totalQuestions++;
-  
-        console.log("1️⃣1️⃣ totalSimilarity:", totalSimilarity);
-        console.log("1️⃣2️⃣ totalQuestions:", totalQuestions);
-  
+        // ✅ Always save answer
         valuesData.push({
           fieldId: ans.fieldId,
           value: ans.value
         });
   
-        console.log("1️⃣3️⃣ valuesData updated:", valuesData);
+        totalQuestions++; // Every question counts
+  
+        // 🧠 If correct answer exists → similarity scoring
+        if (field.correctAnswer) {
+          const correct = normalize(JSON.parse(field.correctAnswer));
+          const user = normalize(ans.value);
+  
+          const similarity = natural.JaroWinklerDistance(user, correct);
+          totalSimilarity += similarity;
+        } else {
+          // 🎁 No correct answer → full mark
+          totalSimilarity += 1;
+        }
       }
   
-      // ================= SCORE CALCULATION =================
       const score =
         totalQuestions === 0
           ? 0
           : Math.round((totalSimilarity / totalQuestions) * 100);
   
-      console.log("1️⃣4️⃣ Final score calculated:", score);
-  
-      // ================= SAVE RESPONSE =================
       const response = await prisma.response.create({
         data: {
           formId,
           submissionScore: score,
-          values: {
-            create: valuesData
-          }
+          values: { create: valuesData }
         }
       });
   
-      console.log("1️⃣5️⃣ Response saved:", response);
-  
-      // ================= UPDATE FORM COUNT =================
-      const updatedForm = await prisma.form.update({
+      await prisma.form.update({
         where: { formId },
-        data: {
-          responseCount: { increment: 1 }
-        }
+        data: { responseCount: { increment: 1 } }
       });
   
-      console.log("1️⃣6️⃣ Form responseCount updated:", updatedForm.responseCount);
-  
-      // ================= FINAL RESPONSE =================
       res.json({
         responseId: response.responseId,
         score
       });
   
-      console.log("✅ API SUCCESS RESPONSE SENT");
-  
     } catch (err) {
-      console.error("🔥 ERROR OCCURRED:", err);
+      console.error(err);
       res.status(500).json({ message: "Submission failed" });
     }
   });
@@ -366,6 +314,7 @@ app.get("/form/:formId/responses", async (req, res) => {
       where: { formId: req.params.formId },
       include: {
         responses: {
+          orderBy: { createdAt: "desc" },
           include: {
             values: { include: { field: true } }
           }
@@ -389,8 +338,39 @@ app.get("/form/:formId/responses", async (req, res) => {
       totalResponses: form.responseCount,
       responses
     });
+
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch responses" });
+  }
+});
+
+
+
+
+app.get("/response/:responseId", async (req, res) => {
+  try {
+    const response = await prisma.response.findUnique({
+      where: { responseId: req.params.responseId },
+      include: {
+        values: { include: { field: true } },
+        form: true
+      }
+    });
+
+    if (!response) return res.status(404).json({ message: "Response not found" });
+
+    res.json({
+      formTitle: response.form.title,
+      score: response.submissionScore,
+      submittedAt: response.createdAt,
+      answers: response.values.map(v => ({
+        question: v.field.label,
+        answer: v.value
+      }))
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch response" });
   }
 });
 
