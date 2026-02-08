@@ -328,10 +328,33 @@ app.get("/form/:formId/responses", async (req, res) => {
       attempt: i + 1,
       score: r.submissionScore,
       submittedAt: r.createdAt,
-      answers: r.values.map(v => ({
-        question: v.field.label,
-        answer: v.value
-      }))
+      answers: r.values.map(v => {
+        const field = v.field;
+        const correctAnswer = field.correctAnswer
+          ? JSON.parse(field.correctAnswer)
+          : null;
+
+        let isCorrect = true;
+        let similarity = 1;
+
+        if (correctAnswer) {
+          const correct = normalize(correctAnswer);
+          const user = normalize(v.value);
+          similarity = natural.JaroWinklerDistance(user, correct);
+          isCorrect = similarity > 0.85;
+        }
+
+        return {
+          question: field.label,
+          type: field.type,
+          options: field.options ? JSON.parse(field.options) : null,
+          expectedAnswer: correctAnswer,
+          userAnswer: v.value,
+          similarity: Number(similarity.toFixed(2)),
+          isCorrect,
+          symbol: isCorrect ? "✔️" : "❌"
+        };
+      })
     }));
 
     res.json({
@@ -340,9 +363,12 @@ app.get("/form/:formId/responses", async (req, res) => {
     });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to fetch responses" });
   }
 });
+
+
 
 
 
