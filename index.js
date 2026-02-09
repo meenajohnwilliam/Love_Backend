@@ -191,6 +191,7 @@ app.post("/form", async (req, res) => {
             orderBy: { order: "asc" },
             select: {
               fieldId: true,
+              imageUrl:true,
               label: true,
               type: true,
               order: true,
@@ -300,7 +301,9 @@ app.get("/user/:userId/forms", async (req, res) => {
     const { userId } = req.params;
 
     const forms = await prisma.form.findMany({
-      where: { userId },
+      where: { userId ,
+        status: "DRAFT"   
+      },
       orderBy: { createdAt: "desc" },
       include: {
         user: {
