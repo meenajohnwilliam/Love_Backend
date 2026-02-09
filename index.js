@@ -13,6 +13,8 @@ const isProd = process.env.NODE_ENV === "production";
 app.use(cors({
   origin: isProd
   ? ["https://pookiecouple.com",
+    "http://localhost:5173",
+      "http://localhost:5174",
     "https://love-backend-1agq.onrender.com"
   ] // PRODUCTION
   : [
