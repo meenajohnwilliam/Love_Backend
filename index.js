@@ -68,19 +68,28 @@ app.post("/form", async (req, res) => {
     }
   });
   
-app.post("/form/:formId/fields",LoveAppQuesPic.any(), async (req, res) => {
+  app.post("/form/:formId/fields", LoveAppQuesPic.any(), async (req, res) => {
     try {
       const { formId } = req.params;
-      const fields = JSON.parse(req.body.fields);  
-
+      
+      // Parse fields only if it's a string (to avoid JSON.parse error)
+      let fields = req.body.fields;
+      if (typeof fields === "string") {
+        fields = JSON.parse(fields);
+      }
+  
       const files = req.files || [];
   
       await Promise.all(
-        fields.map(async (field) => {
+        fields.map(async (field, index) => {
           let imageUrl = null;
+  
+          // Assign image URL if a file was uploaded at this index
           if (files[index]) {
             imageUrl = files[index].location || files[index].path;
           }
+  
+          // Create the field record in the database
           const createdField = await prisma.field.create({
             data: {
               label: field.label,
@@ -90,39 +99,42 @@ app.post("/form/:formId/fields",LoveAppQuesPic.any(), async (req, res) => {
               formId,
               correctAnswer: field.correctAnswer
                 ? JSON.stringify(field.correctAnswer)
-                : null
-            }
+                : null,
+            },
           });
   
-          if (field.options && field.options.length > 0) {
+          // If options exist (for SELECT fields), create them
+          if (field.type === "SELECT" && field.options && field.options.length > 0) {
             await prisma.option.createMany({
-              data: field.options.map(opt => ({
+              data: field.options.map((opt) => ({
                 label: opt,
-                fieldId: createdField.fieldId
-              }))
+                fieldId: createdField.fieldId,
+              })),
             });
           }
         })
       );
   
+      // Update form status to PUBLISHED
       const form = await prisma.form.update({
         where: { formId },
-        data: { status: "PUBLISHED" }
+        data: { status: "PUBLISHED" },
       });
   
+      // Send success response
       res.json({
         message: "Fields added and form published successfully",
         publicLink: `http://localhost:3001/form/${formId}`,
-        form
+        form,
       });
-  
     } catch (error) {
-      console.error(error);
+      console.error("Error in /form/:formId/fields:", error);
       res.status(500).json({
-        message: "Failed to create fields or publish form"
+        message: "Failed to create fields or publish form",
       });
     }
   });
+  
 
   app.put("/form/:formId/reveal",LoveApp.single("revealImage"),async (req, res) => {
       try {
