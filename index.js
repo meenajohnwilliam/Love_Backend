@@ -302,7 +302,7 @@ app.get("/user/:userId/forms", async (req, res) => {
 
     const forms = await prisma.form.findMany({
       where: { userId ,
-        status: "DRAFT"   
+        status: "PUBLISHED"   
       },
       orderBy: { createdAt: "desc" },
       include: {
