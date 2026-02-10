@@ -15,7 +15,8 @@ app.use(cors({
   ? ["https://pookiecouple.com",
     "http://localhost:5173",
       "http://localhost:5174",
-    "https://love-backend-1agq.onrender.com"
+    "https://love-backend-1agq.onrender.com",
+    "https://pookiecouple.netlify.app"
   ] // PRODUCTION
   : [
       "http://localhost:5173",
@@ -438,3 +439,5 @@ app.get("/form/:formId/responses", async (req, res) => {
 app.listen(3001, () => {
   console.log("🚀 Server running on http://localhost:3001");
 });
+
+

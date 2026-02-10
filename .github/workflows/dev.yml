@@ -1,0 +1,16 @@
+on:
+  push:
+    branches: dev
+ 
+jobs:
+  build:
+    runs-on: emc-dev
+ 
+    steps:
+      - name: Remove repository
+        run: sudo chown -R ubuntu:ubuntu /home/ubuntu/actions-runner/_work/emc-backend/emc-backend/dev
+ 
+      - name: Clone Repository
+        uses: actions/checkout@v4
+        with:
+          path: 'dev'
