@@ -240,6 +240,7 @@ app.post("/form", async (req, res) => {
       let totalSimilarity = 0;
       let totalQuestions = 0;
       const valuesData = [];
+      const results = [];
   
       for (const ans of answers) {
         const field = form.fields.find(f => f.fieldId === ans.fieldId);
