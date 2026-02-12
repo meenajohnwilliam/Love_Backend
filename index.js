@@ -14,7 +14,7 @@ app.use(cors({
   origin: isProd
   ? ["https://pookiecouple.com",
     "http://localhost:5173",
-      "http://localhost:5174",
+    "http://localhost:5174",
     "https://love-backend-1agq.onrender.com",
     "https://pookiecouple.netlify.app"
   ] // PRODUCTION
@@ -264,6 +264,16 @@ app.post("/form", async (req, res) => {
           // 🎁 No correct answer → full mark
           totalSimilarity += 1;
         }
+
+        results.push({
+          fieldId: field.fieldId,
+          question: field.label, // question text
+          userAnswer: ans.value,
+          correctAnswer: correctAnswer,
+          similarity: Math.round(similarity * 100),
+          isCorrect: similarity > 0.9 // 90% threshold
+        });
+  
       }
   
       const score =
@@ -286,7 +296,9 @@ app.post("/form", async (req, res) => {
   
       res.json({
         responseId: response.responseId,
-        score
+        score,
+        totalQuestions,
+        results
       });
   
     } catch (err) {

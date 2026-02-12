@@ -61,7 +61,7 @@ async function sendOtpEmail(toEmail, otpCode) {
       font-size: 14px;
       margin-top: 0;
     ">
-      Valentine’s Special • Feb 14
+      Valentine’s Special 
     </p>
   </div>
 

@@ -230,10 +230,6 @@ router.post("/auth/logout", async (req, res) => {
   }
 });
 
-router.get('/dashboard',roleBasedAccess(["ADMIN","USER"]),async (req,res)=>{
- res.json({
-  message:"mass macha neega "
- })
-})
+
 
 module.exports = router;
