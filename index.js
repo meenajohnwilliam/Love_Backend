@@ -246,35 +246,38 @@ app.post("/form", async (req, res) => {
         const field = form.fields.find(f => f.fieldId === ans.fieldId);
         if (!field) continue;
   
-        // ✅ Always save answer
         valuesData.push({
           fieldId: ans.fieldId,
           value: ans.value
         });
   
-        totalQuestions++; // Every question counts
+        totalQuestions++;
   
-        // 🧠 If correct answer exists → similarity scoring
+        // 🔹 ADDED: define similarity & correctAnswer before using
+        let similarity = 1;        // default full mark
+        let correctAnswer = null;  // default null
+  
         if (field.correctAnswer) {
-          const correct = normalize(JSON.parse(field.correctAnswer));
+          const parsedCorrect = JSON.parse(field.correctAnswer); // 🔹 ADDED
+          const correct = normalize(parsedCorrect);
           const user = normalize(ans.value);
   
-          const similarity = natural.JaroWinklerDistance(user, correct);
+          similarity = natural.JaroWinklerDistance(user, correct); // ✅ FIXED (removed const)
           totalSimilarity += similarity;
+  
+          correctAnswer = parsedCorrect; // 🔹 ADDED
         } else {
-          // 🎁 No correct answer → full mark
           totalSimilarity += 1;
         }
-
+  
         results.push({
           fieldId: field.fieldId,
-          question: field.label, // question text
+          question: field.label,
           userAnswer: ans.value,
-          correctAnswer: correctAnswer,
+          correctAnswer: correctAnswer, // ✅ now defined
           similarity: Math.round(similarity * 100),
-          isCorrect: similarity > 0.9 // 90% threshold
+          isCorrect: similarity > 0.9
         });
-  
       }
   
       const score =
