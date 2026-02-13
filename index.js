@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const natural = require("natural");
 const prisma =  require("./src/prisma")
 const {LoveApp,LoveAppQuesPic} = require('./src/multer')
+const authorization = require('./src/authorizeRoles')
 
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
@@ -38,7 +39,7 @@ function normalize(str) {
 }
 
 
-app.post("/form", async (req, res) => {
+app.post("/form",authorization(["user", "admin"]), async (req, res) => {
     try {
       const { yourName, yourSpouseName , userId } = req.body;
   
@@ -69,7 +70,7 @@ app.post("/form", async (req, res) => {
     }
   });
   
-  app.post("/form/:formId/fields", LoveAppQuesPic.any(), async (req, res) => {
+app.post("/form/:formId/fields",authorization(["user", "admin"]), LoveAppQuesPic.any(), async (req, res) => {
     try {
       const { formId } = req.params;
       
@@ -135,9 +136,8 @@ app.post("/form", async (req, res) => {
       });
     }
   });
-  
 
-  app.put("/form/:formId/reveal",LoveApp.single("revealImage"),async (req, res) => {
+  app.put("/form/:formId/reveal",authorization(["user", "admin"]),LoveApp.single("revealImage"),async (req, res) => {
       try {
         const { formId } = req.params;
         const { revealText } = req.body;
@@ -175,145 +175,9 @@ app.post("/form", async (req, res) => {
       }
     }
   );
-
-  app.get("/form/:formId", async (req, res) => {
-    try {
-      const { formId } = req.params;
   
-      const form = await prisma.form.findUnique({
-        where: { formId },
-        select: {
-          formId: true,
-          yourName: true,
-          yourSpouseName: true,
-          revealText: true,
-          revealImage: true,
-          fields: {
-            orderBy: { order: "asc" },
-            select: {
-              fieldId: true,
-              imageUrl:true,
-              label: true,
-              type: true,
-              order: true,
-              options: {
-                select: {
-                  optionId: true,
-                  label: true
-                }
-              }
-            }
-          }
-        }
-        
-      });
-  
-      if (!form) {
-        return res.status(404).json({ message: "Form not found" });
-      }
-  
-      res.json(form);
-    } catch (error) {
-      console.error("Get form error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-  
-  
-
-
-  // ================== SUBMIT FORM (SCORING) ==================
-  app.post("/form/:formId/submit", async (req, res) => {
-    try {
-      const { formId } = req.params;
-      const { answers } = req.body;
-  
-      const form = await prisma.form.findUnique({
-        where: { formId },
-        include: { fields: true }
-      });
-  
-      if (!form || form.status !== "PUBLISHED") {
-        return res.status(403).json({ message: "Form not available" });
-      }
-  
-      let totalSimilarity = 0;
-      let totalQuestions = 0;
-      const valuesData = [];
-      const results = [];
-  
-      for (const ans of answers) {
-        const field = form.fields.find(f => f.fieldId === ans.fieldId);
-        if (!field) continue;
-  
-        valuesData.push({
-          fieldId: ans.fieldId,
-          value: ans.value
-        });
-  
-        totalQuestions++;
-  
-        // 🔹 ADDED: define similarity & correctAnswer before using
-        let similarity = 1;        // default full mark
-        let correctAnswer = null;  // default null
-  
-        if (field.correctAnswer) {
-          const parsedCorrect = JSON.parse(field.correctAnswer); // 🔹 ADDED
-          const correct = normalize(parsedCorrect);
-          const user = normalize(ans.value);
-  
-          similarity = natural.JaroWinklerDistance(user, correct); // ✅ FIXED (removed const)
-          totalSimilarity += similarity;
-  
-          correctAnswer = parsedCorrect; // 🔹 ADDED
-        } else {
-          totalSimilarity += 1;
-        }
-  
-        results.push({
-          fieldId: field.fieldId,
-          question: field.label,
-          userAnswer: ans.value,
-          correctAnswer: correctAnswer, // ✅ now defined
-          similarity: Math.round(similarity * 100),
-          isCorrect: similarity > 0.9
-        });
-      }
-  
-      const score =
-        totalQuestions === 0
-          ? 0
-          : Math.round((totalSimilarity / totalQuestions) * 100);
-  
-      const response = await prisma.response.create({
-        data: {
-          formId,
-          submissionScore: score,
-          values: { create: valuesData }
-        }
-      });
-  
-      await prisma.form.update({
-        where: { formId },
-        data: { responseCount: { increment: 1 } }
-      });
-  
-      res.json({
-        responseId: response.responseId,
-        score,
-        totalQuestions,
-        results
-      });
-  
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Submission failed" });
-    }
-  });
-  
-
 // // ================== USER FORMS ==================
-app.get("/user/:userId/forms", async (req, res) => {
+app.get("/user/:userId/forms",authorization(["user", "admin"]), async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -356,9 +220,8 @@ app.get("/user/:userId/forms", async (req, res) => {
   }
 });
 
-
 // // ================== FORM RESPONSES ==================
-app.get("/form/:formId/responses", async (req, res) => {
+app.get("/form/:formId/responses",authorization(["user", "admin"]), async (req, res) => {
   try {
     const form = await prisma.form.findUnique({
       where: { formId: req.params.formId },
@@ -420,35 +283,138 @@ app.get("/form/:formId/responses", async (req, res) => {
 
 
 
+/// public people
+app.get("/form/:formId", async (req, res) => {
+  try {
+    const { formId } = req.params;
 
+    const form = await prisma.form.findUnique({
+      where: { formId },
+      select: {
+        formId: true,
+        yourName: true,
+        yourSpouseName: true,
+        revealText: true,
+        revealImage: true,
+        fields: {
+          orderBy: { order: "asc" },
+          select: {
+            fieldId: true,
+            imageUrl:true,
+            label: true,
+            type: true,
+            order: true,
+            options: {
+              select: {
+                optionId: true,
+                label: true
+              }
+            }
+          }
+        }
+      }
+      
+    });
 
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
 
-// app.get("/response/:responseId", async (req, res) => {
-//   try {
-//     const response = await prisma.response.findUnique({
-//       where: { responseId: req.params.responseId },
-//       include: {
-//         values: { include: { field: true } },
-//         form: true
-//       }
-//     });
+    res.json(form);
+  } catch (error) {
+    console.error("Get form error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
-//     if (!response) return res.status(404).json({ message: "Response not found" });
+// ================== SUBMIT FORM (SCORING) ==================
+app.post("/form/:formId/submit", async (req, res) => {
+  try {
+    const { formId } = req.params;
+    const { answers } = req.body;
 
-//     res.json({
-//       formTitle: response.form.title,
-//       score: response.submissionScore,
-//       submittedAt: response.createdAt,
-//       answers: response.values.map(v => ({
-//         question: v.field.label,
-//         answer: v.value
-//       }))
-//     });
+    const form = await prisma.form.findUnique({
+      where: { formId },
+      include: { fields: true }
+    });
 
-//   } catch (err) {
-//     res.status(500).json({ message: "Failed to fetch response" });
-//   }
-// });
+    if (!form || form.status !== "PUBLISHED") {
+      return res.status(403).json({ message: "Form not available" });
+    }
+
+    let totalSimilarity = 0;
+    let totalQuestions = 0;
+    const valuesData = [];
+    const results = [];
+
+    for (const ans of answers) {
+      const field = form.fields.find(f => f.fieldId === ans.fieldId);
+      if (!field) continue;
+
+      valuesData.push({
+        fieldId: ans.fieldId,
+        value: ans.value
+      });
+
+      totalQuestions++;
+
+      // 🔹 ADDED: define similarity & correctAnswer before using
+      let similarity = 1;        // default full mark
+      let correctAnswer = null;  // default null
+
+      if (field.correctAnswer) {
+        const parsedCorrect = JSON.parse(field.correctAnswer); // 🔹 ADDED
+        const correct = normalize(parsedCorrect);
+        const user = normalize(ans.value);
+
+        similarity = natural.JaroWinklerDistance(user, correct); // ✅ FIXED (removed const)
+        totalSimilarity += similarity;
+
+        correctAnswer = parsedCorrect; // 🔹 ADDED
+      } else {
+        totalSimilarity += 1;
+      }
+
+      results.push({
+        fieldId: field.fieldId,
+        question: field.label,
+        userAnswer: ans.value,
+        correctAnswer: correctAnswer, // ✅ now defined
+        similarity: Math.round(similarity * 100),
+        isCorrect: similarity > 0.9
+      });
+    }
+
+    const score =
+      totalQuestions === 0
+        ? 0
+        : Math.round((totalSimilarity / totalQuestions) * 100);
+
+    const response = await prisma.response.create({
+      data: {
+        formId,
+        submissionScore: score,
+        values: { create: valuesData }
+      }
+    });
+
+    await prisma.form.update({
+      where: { formId },
+      data: { responseCount: { increment: 1 } }
+    });
+
+    res.json({
+      responseId: response.responseId,
+      score,
+      totalQuestions,
+      results
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Submission failed" });
+  }
+});
 
   
 
