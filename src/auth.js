@@ -101,7 +101,7 @@ router.post("/auth/signup", async (req, res) => {
     res.json({
       message: "Signup successful. OTP sent to email."
     });
-    res.json({ message: "Signup successful. OTP sent to email." });
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Signup failed" });
@@ -226,11 +226,11 @@ router.post("/auth/login", async (req, res) => {
 
     await sendOtpEmail(email, otpCode);
 
-    res.json({
+    return res.json({
       message: "OTP sent. Please verify to login."
     });
   } catch {
-    res.status(500).json({ message: "Login failed" });
+   return res.status(500).json({ message: "Login failed" });
   }
 });
 
