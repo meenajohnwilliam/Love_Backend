@@ -67,11 +67,32 @@ router.post("/auth/signup", async (req, res) => {
     const { email} = req.body;
     if (!email) return res.status(400).json({ message: "Email required" });
 
-    const exists = await prisma.user.findUnique({ where: { email } });
-    if (exists) return res.status(400).json({ message: "User exists" });
+    const existingUser  = await prisma.user.findUnique({ where: { email } });
+    // if (exists) return res.status(400).json({ message: "User exists" });
 
     const otpCode = generateOTP();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+     // 🟡 CHANGE: Block ONLY verified users
+     if (existingUser && existingUser.role !== "UNVERIFIED") {
+      return res.status(400).json({
+        message: "Email already registered. Please login."
+      });
+    }
+
+    // ✅ ADD: Resend OTP if user exists but NOT verified
+    if (existingUser && existingUser.role === "UNVERIFIED") {
+      await prisma.user.update({
+        where: { userId: existingUser.userId },
+        data: { otpCode, otpExpiresAt }
+      });
+
+      await sendOtpEmail(email, otpCode);
+
+      return res.json({
+        message: "OTP resent. Please verify your email."
+      });
+    }
 
     await prisma.user.create({
       data: {
@@ -90,6 +111,7 @@ router.post("/auth/signup", async (req, res) => {
     res.status(500).json({ message: "Signup failed" });
   }
 });
+
 
 // ================= RESEND-OTP =================
 router.post("/auth/resend-otp", async (req, res) => {
