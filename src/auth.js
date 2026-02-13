@@ -211,7 +211,7 @@ router.post("/auth/login", async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found. Please signup."
+        message: "User not found. Start playing the game to continue."
       });
     }
 
