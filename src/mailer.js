@@ -35,7 +35,7 @@ const resend = new Resend(config.RESEND_API_KEY);
 async function sendOtpEmail(toEmail, otpCode) {
   try {
     await resend.emails.send({
-      from: "info@webzspot.com",
+      from: "together@pookiecouple.com",
       to: toEmail,
       subject: "Your OTP Code",
       html: `
