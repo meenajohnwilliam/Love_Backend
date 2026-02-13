@@ -416,6 +416,64 @@ app.post("/form/:formId/submit", async (req, res) => {
   }
 });
 
+
+
+
+app.get("/user-count", async (req, res) => {
+  try {
+    // 🟢 ADD: pagination & search params
+    const page = parseInt(req.query.page)         // 🟢 ADD
+    const limit = parseInt(req.query.limit)      // 🟢 ADD
+    const search = req.query.search              // 🟢 ADD
+
+    const skip = (page - 1) * limit;                    // 🟢 ADD
+
+    // 🟡 CHANGE: count users WITH search
+    const userCount = await prisma.user.count({
+      where: {
+        email: {
+          contains: search,
+          mode: "insensitive"
+        }
+      }
+    });
+
+    // 🟡 CHANGE: fetch emails WITH pagination + search
+    const userEmails = await prisma.user.findMany({
+      where: {
+        email: {
+          contains: search,
+          mode: "insensitive"
+        }
+      },
+      select: {
+        email: true
+      },
+
+      // 🟢 ADD: DESCENDING ORDER (LATEST FIRST)
+      orderBy: {
+        createdAt: "desc"
+      },
+      
+      skip,                                            // 🟢 ADD
+      take: limit                                      // 🟢 ADD
+    });
+
+    res.json({
+      userCount,
+      currentPage: page,                               // 🟢 ADD
+      totalPages: Math.ceil(userCount / limit),        // 🟢 ADD
+      userEmails
+    });
+  } catch (error) {
+    console.error("User count error:", error);
+    res.status(500).json({
+      message: "Failed to fetch user count"
+    });
+  }
+});
+
+
   
 
 app.listen(3001, () => {
