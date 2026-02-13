@@ -39,7 +39,7 @@ function normalize(str) {
 }
 
 
-app.post("/form",authorization(["user", "admin"]), async (req, res) => {
+app.post("/form",authorization(["USER", "ADMIN"]), async (req, res) => {
     try {
       const { yourName, yourSpouseName , userId } = req.body;
   
@@ -70,7 +70,7 @@ app.post("/form",authorization(["user", "admin"]), async (req, res) => {
     }
   });
   
-app.post("/form/:formId/fields",authorization(["user", "admin"]), LoveAppQuesPic.any(), async (req, res) => {
+app.post("/form/:formId/fields",authorization(["USER", "ADMIN"]), LoveAppQuesPic.any(), async (req, res) => {
     try {
       const { formId } = req.params;
       
@@ -137,7 +137,7 @@ app.post("/form/:formId/fields",authorization(["user", "admin"]), LoveAppQuesPic
     }
   });
 
-  app.put("/form/:formId/reveal",authorization(["user", "admin"]),LoveApp.single("revealImage"),async (req, res) => {
+  app.put("/form/:formId/reveal",authorization(["USER", "ADMIN"]),LoveApp.single("revealImage"),async (req, res) => {
       try {
         const { formId } = req.params;
         const { revealText } = req.body;
@@ -177,7 +177,7 @@ app.post("/form/:formId/fields",authorization(["user", "admin"]), LoveAppQuesPic
   );
   
 // // ================== USER FORMS ==================
-app.get("/user/:userId/forms",authorization(["user", "admin"]), async (req, res) => {
+app.get("/user/:userId/forms",authorization(["USER", "ADMIN"]), async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -221,7 +221,7 @@ app.get("/user/:userId/forms",authorization(["user", "admin"]), async (req, res)
 });
 
 // // ================== FORM RESPONSES ==================
-app.get("/form/:formId/responses",authorization(["user", "admin"]), async (req, res) => {
+app.get("/form/:formId/responses", async (req, res) => {
   try {
     const form = await prisma.form.findUnique({
       where: { formId: req.params.formId },
