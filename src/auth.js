@@ -124,11 +124,7 @@ router.post("/auth/resend-otp", async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user) {
-      return res.status(400).json({
-        message: "No account found with this email. Please signUp"
-      });
-    }
+    
 
     if (user.role !== "UNVERIFIED") {
       return res.status(400).json({
