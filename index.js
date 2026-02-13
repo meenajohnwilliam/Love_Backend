@@ -17,7 +17,8 @@ app.use(cors({
     "http://localhost:5173",
     "http://localhost:5174",
     "https://love-backend-1agq.onrender.com",
-    "https://pookiecouple.netlify.app"
+    "https://pookiecouple.netlify.app",
+    "https://thepookiecouple.netlify.app"
   ] // PRODUCTION
   : [
       "http://localhost:5173",
@@ -454,7 +455,7 @@ app.get("/user-count", async (req, res) => {
       orderBy: {
         createdAt: "desc"
       },
-      
+
       skip,                                            // 🟢 ADD
       take: limit                                      // 🟢 ADD
     });
