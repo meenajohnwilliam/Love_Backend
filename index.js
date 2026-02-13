@@ -448,7 +448,8 @@ app.get("/user-count", async (req, res) => {
         }
       },
       select: {
-        email: true
+        email: true,
+        userId:true
       },
 
       // 🟢 ADD: DESCENDING ORDER (LATEST FIRST)
@@ -473,6 +474,78 @@ app.get("/user-count", async (req, res) => {
     });
   }
 });
+
+
+app.get("/user/:userId/details", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+
+        email: true,
+        createdAt: true,
+
+        forms: {
+          orderBy: {
+            createdAt: "desc"
+          },
+          select: {
+            formId: true,
+            yourName: true,
+            yourSpouseName: true,
+            status: true,
+
+            revealText: true,
+            revealImage: true,
+            responseCount: true,
+            createdAt: true,
+
+            fields: {
+              orderBy: {
+                order: "asc"
+              },
+              select: {
+                fieldId: true,
+                label: true,
+                type: true,
+                order: true,
+                imageUrl: true,
+                correctAnswer: true,
+
+               
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user
+    });
+
+  } catch (error) {
+    console.error("User detail page error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user details"
+    });
+  }
+});
+
+
+
 
 
   
