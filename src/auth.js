@@ -73,15 +73,7 @@ router.post("/auth/signup", async (req, res) => {
     const otpCode = generateOTP();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-     // 🟡 CHANGE: Block ONLY verified users
-     if (existingUser && existingUser.role !== "UNVERIFIED") {
-      return res.status(400).json({
-        message: "Email already registered. Please login."
-      });
-    }
-
-    // ✅ ADD: Resend OTP if user exists but NOT verified
-    if (existingUser && existingUser.role === "UNVERIFIED") {
+    if (existingUser) {
       await prisma.user.update({
         where: { userId: existingUser.userId },
         data: { otpCode, otpExpiresAt }
@@ -90,10 +82,11 @@ router.post("/auth/signup", async (req, res) => {
       await sendOtpEmail(email, otpCode);
 
       return res.json({
-        message: "OTP resent. Please verify your email."
+        message: "OTP sent. Please verify to continue."
       });
     }
 
+    // 🟢 CREATE new user
     await prisma.user.create({
       data: {
         email,
@@ -105,6 +98,9 @@ router.post("/auth/signup", async (req, res) => {
 
     await sendOtpEmail(email, otpCode);
 
+    res.json({
+      message: "Signup successful. OTP sent to email."
+    });
     res.json({ message: "Signup successful. OTP sent to email." });
   } catch (err) {
     console.error(err);
@@ -124,13 +120,13 @@ router.post("/auth/resend-otp", async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
 
-    
-
-    if (user.role !== "UNVERIFIED") {
+    if (!user) {
       return res.status(400).json({
-        message: "This account is already verified. Please login"
+        message: "No account found with this email."
       });
     }
+
+  
 
     const otpCode = generateOTP();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -142,7 +138,7 @@ router.post("/auth/resend-otp", async (req, res) => {
 
     await sendOtpEmail(email, otpCode);
 
-    res.json({ message: "Signup OTP resent" });
+    res.json({ message: "OTP resent successfully." });
   } catch {
     res.status(500).json({ message: "Resend failed" });
   }
@@ -206,6 +202,11 @@ router.post("/auth/login", async (req, res) => {
   try {
     const { email } = req.body;
 
+    
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
@@ -214,15 +215,9 @@ router.post("/auth/login", async (req, res) => {
       });
     }
 
-    if (user.role === "UNVERIFIED") {
-      return res.status(400).json({
-        message: "User not verified",
-      
-      });
-    }
-
     const otpCode = generateOTP();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
 
     await prisma.user.update({
       where: { userId: user.userId },
@@ -231,7 +226,9 @@ router.post("/auth/login", async (req, res) => {
 
     await sendOtpEmail(email, otpCode);
 
-    res.json({ message: "Login OTP sent" });
+    res.json({
+      message: "OTP sent. Please verify to login."
+    });
   } catch {
     res.status(500).json({ message: "Login failed" });
   }
