@@ -382,7 +382,8 @@ app.post("/form/:formId/submit", async (req, res) => {
         userAnswer: ans.value,
         correctAnswer: correctAnswer, // ✅ now defined
         similarity: Math.round(similarity * 100),
-        isCorrect: similarity > 0.9
+        isCorrect: similarity > 0.6
+        
       });
     }
 
